@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>three.js webgl - geometry - extrude shapes</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        <link type="text/css" rel="stylesheet" href="main.css">
+
+    </head>
+
+    <body>
+        
+        <button id="button" className="whitebutton">Nowa generacja</button>
+
+        <script type="module">
+
+
+
+            import * as THREE from 'https://unpkg.com/three/build/three.module.js';
+
+            import { TrackballControls } from 'https://unpkg.com/three/examples/jsm/controls/TrackballControls.js';
+
+            var camera, scene, renderer, controls;
+            //generacja początkowa                   //  ilosc branchy, wielkosc, rozmiar lisci, kolor lisci, ostatnie 2 - kwiatuszek
+            var tree_gen_array = ['0001100100','1010101100','1011101000','0101100100','1001011000', '1010110100','1111101100','1011100100','1011011000','1011000000','0111000100']
+
+            var material = new THREE.MeshBasicMaterial( {color: 0xA0522D} );
+            var forSelection= [];
+            var dict = {};
+            var counter =0;
+            init();
+            animate();
+
+            document.getElementById("button").addEventListener("click", print_trees_generation);
+
+            function print_trees_generation() {
+                var nowa_populacja = [];
+                scene.remove.apply(scene, scene.children);
+                scene.add( new THREE.AmbientLight( 0x222222 ) );
+
+                var light = new THREE.PointLight( 0xffffff );
+                light.position.copy( camera.position );
+                scene.add(light);
+                counter=counter+1;
+                console.log("Generacja " + counter);
+                nowa_populacja = krzyzowanie();
+                console.log("Dlugosc populacji new " + nowa_populacja.length);
+                for (var e=0; e<tree_gen_array.length; e++) {
+
+                    var treeSelected_array = nowa_populacja[e];
+                    var values = planttree(material, treeSelected_array); //array contains grade and tree
+                    var treeSelected = values[0];
+                    var rating = values[1];
+                    generate_for_selection(rating, treeSelected_array)
+                    console.log("rating is " + rating);
+                    console.log("tress are " + treeSelected);
+
+                    treeSelected.position.set(e*320,0,0);
+                    scene.add(treeSelected);
+                    flowerpot(e*320);
+
+                }
+            }
+            
+            function krzyzowanie(){
+              var mutation = false; 
+              var mutation_option=0;
+               var parental_array=[];
+               var baby_array=[];
+                var twice_generation = tree_gen_array.length * 2;
+                var once_generation = tree_gen_array.length;
+                if (Math.random() < 0.1){
+                    mutation=true;
+                    mutation_option = mutacja();
+                }
+                for (var e=0; e<twice_generation; e++){
+                    var randomValue =getRandomIntInclusive(0, forSelection.length-1);
+                    var singleSelectedParent = forSelection[randomValue];
+                    parental_array.push(singleSelectedParent);
+
+                }
+
+                for (var e=0; e<twice_generation; e++){
+                    var first_parent = parental_array[e];
+                    var second_parent = parental_array[e+1];
+
+                    e+=1;
+                    var first_genome = first_parent.substring(0,4);
+                    var second_genome = second_parent.substring(4,8);
+                    if (mutation_option == 1 ){
+                        var baby_genome = second_genome + first_genome; 
+
+                    }
+                    else {
+                        var baby_genome = first_genome + second_genome; 
+                    }
+                    if(mutation_option == 3 ){
+                        baby_genome = baby_genome + "01";
+                        
+
+                    }
+                    else {
+                        baby_genome = baby_genome + second_parent.substring(8,10);
+                    }
+                    if (mutation_option == 2 ){
+                        var get_baby_genome = baby_genome;
+                        var randomIndex =getRandomIntInclusive(0, 7);
+                        var randomBinary =getRandomIntInclusive(0, 1);
+                        new_baby_genome = baby_genome.substring(0, randomIndex) + randomBinary.toString() + baby_genome.substring(randomIndex + 1);
+                        baby_array.push(new_baby_genome);
+
+                    }
+                    else {
+                        baby_array.push(baby_genome);
+
+                    }
+                }
+                forSelection.length = 0;
+                console.log(baby_array);
+                return baby_array; //nowa populacja 
+            }
+
+            function generate_for_selection(grade, tree_genome) {
+                
+                for(var d=0; d<parseInt(grade);d++){
+                          forSelection.push(tree_genome);
+                     }
+            }
+
+            function mutacja(){
+                var randomValue =getRandomIntInclusive(1, 3);
+                if( randomValue == 1) {
+                    return 1;
+                }
+                if ( randomValue == 2){
+                    return 2;
+                }
+                if ( randomValue == 3){
+                    return 3; 
+                }
+            }
+
+            function init() {
+
+                renderer = new THREE.WebGLRenderer(
+                    {antialias: true}
+                );
+
+
+                renderer.setPixelRatio( window.devicePixelRatio );
+                renderer.setSize( window.innerWidth, window.innerHeight );
+                document.body.appendChild( renderer.domElement );
+
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color( 0xffffff );
+
+                camera = new THREE.PerspectiveCamera( 90, 2, 0.1, 10000 );
+                camera.position.set(-100, -400,-100000);
+
+                controls = new TrackballControls( camera, renderer.domElement );
+                controls.minDistance = 10;
+                controls.maxDistance = 2000;
+                controls.target.set(0, 100, 0);
+                scene.add( new THREE.AmbientLight( 0x222222 ) );
+
+                var light = new THREE.PointLight( 0xffffff );
+                light.position.copy( camera.position );
+                scene.add(light);
+
+
+                for (var c=0; c<tree_gen_array.length; c++) {  
+                    var values = planttree(material, tree_gen_array[c]);
+                    var tree = values[0];
+                    var rating = values[1];
+                    generate_for_selection(rating,tree_gen_array[c]);
+                    
+                        tree.position.set(c*320,0,0);
+                        scene.add(tree);
+                        flowerpot(c*320);
+                }
+                
+                
+            }
+
+
+            function flowerpot(zparameter){
+                var geometry = new THREE.CylinderGeometry( 70, 20, 80, 6 );
+                var material = new THREE.MeshLambertMaterial( {color: 0x5e0022} );
+                var cylinder = new THREE.Mesh( geometry, material );
+                var renderer = new THREE.WebGLRenderer({logarithmicDepthBuffer: true });
+                scene.add( cylinder );
+                cylinder.position.set(zparameter, -20, 0);
+            }
+
+
+            function animate() {
+
+                requestAnimationFrame( animate );
+                controls.update();
+                renderer.render( scene, camera );
+
+            }
+
+            function getRandomIntInclusive(min, max) {
+                    min = Math.ceil(min);
+                    max = Math.floor(max);
+                    return Math.floor(Math.random() * (max - min + 1)) + min;
+             }
+
+
+
+function planttree (material, plant_genome) {
+    
+    var rating=0;
+                               //  00     01   10   11   
+    var amount_branches_array = ['1', '2', '3', '4'];
+    var size_tree_array = ['1', '2', '3', '4'];
+    
+    var leaves_sizes_array = [parseInt(5+getRandomIntInclusive(4,19)), parseInt(1+getRandomIntInclusive(0,5)), parseInt(1+getRandomIntInclusive(0,10)), parseInt(3+getRandomIntInclusive(3,12)) ];
+    var colors_array = ['0xcc6600', '0xffff33', '0x66ff33', '0x1A500F' ]; //   brown, yellow, l green,d green
+
+    var first_allel = plant_genome.substring(0,2);
+    var second_allel = plant_genome.substring(2,4);
+    var third_allel = plant_genome.substring(4,6);
+    var fourth_allel = plant_genome.substring(6,8);
+    var last_allel = plant_genome.substring(8,10);
+
+    var children = get_first_allel_from_array(first_allel);
+    var size = get_second_allel_from_array(second_allel);
+    var leaves_size = get_third_allel_from_array(third_allel);
+    var leaves_colors = get_fourth_allel_from_array(fourth_allel);
+    var sizeModifier = .9;
+    var flower_mutation = parseInt(last_allel,2);
+    
+    var branchPivots = [];
+    var myrand = getRandomIntInclusive(0,10);
+    var tree = createBranch(size, material, children, false, sizeModifier,myrand,leaves_size,leaves_colors);
+    tree.branchPivots = branchPivots;
+    
+    return [tree,rating];
+
+    
+    function createBranch (size, material, children, isChild, sizeModifier,randomnumberofleaves,leaf_size_from_array,color_leaf) {
+        var branchPivot = new THREE.Object3D();
+        var branchEnd = new THREE.Object3D();
+        var leaves = [];
+        branchPivots.push(branchPivot);
+
+        var length = Math.random() * (size * 25) + size * 15;
+        
+        if (children == 0) { var endSize = 0; } else { var endSize = size * sizeModifier; }
+
+        var branch = new THREE.Mesh(new THREE.CylinderGeometry(endSize, size, length, 5, 1, true), material);
+  
+        for(var i=1; i<=randomnumberofleaves;i++){
+
+            var my_color= parseInt ( color_leaf, 16 );
+            var sphere = new THREE.Mesh( new THREE.SphereGeometry(leaf_size_from_array,3,20 ), new THREE.MeshPhongMaterial({ color: my_color, specular: 0x006400, shininess: 0 ,flatShading: true}) );
+            sphere.position.y= length / (i*2) ;
+            sphere.rotation.z += Math.random() * 1.5 - sizeModifier * 0.95;
+            sphere.rotation.x += Math.random() * 1.5 - sizeModifier * 0.95;
+            leaves.push(sphere);
+            if(children == 0 ){
+                if (flower_mutation == 1 ){
+                    var color = "0x" + ("000000" + Math.floor(Math.random() * 16777216).toString(16)).substr(-6)
+                     var colorValue = parseInt ( color, 16 );
+
+                    var flower = new THREE.Mesh( new THREE.SphereGeometry(30,22,3,1,6.3,3,0.7 ), new THREE.MeshPhongMaterial({ color: colorValue, specular: 0x006400, shininess: 2 ,flatShading: true}) );
+                    flower.position.y= length / (i) ;
+                    leaves.push(flower);
+                }
+            }
+        }
+
+        branchPivot.add(branch);
+        branch.add(branchEnd);
+        branch.position.y = length / 2;
+        branchEnd.position.y = length / 2 ;
+        
+        if (isChild) {
+            branchPivot.rotation.z += Math.random() * 1.5 - sizeModifier * 0.95;
+            branchPivot.rotation.x += Math.random() * 1.5 - sizeModifier * 0.95;
+
+        } else {
+            //branch.castShadow = true;
+            //branch.receiveShadow = true;
+
+            branchPivot.rotation.z += Math.random() * .1 + .05;
+            branchPivot.rotation.x += Math.random() * .1 - .05;  
+        }
+        if(children != 4){
+                    for(var i=1; i<=randomnumberofleaves;i++){
+                        branch.add(leaves[i-1]);
+                    }
+                }
+
+        if (children > 0) {
+            for (var c=0; c<children; c++) {
+                var myrand = getRandomIntInclusive(3,6);
+                var child = createBranch(size * sizeModifier, material, children - 1, true, sizeModifier,myrand,leaf_size_from_array,color_leaf);
+                branchEnd.add(child);
+                
+                
+            }
+            
+        }
+        
+        return branchPivot;
+    }
+    function get_first_allel_from_array(first_allel){
+                var decimal = parseInt(first_allel,2);
+                   var amount_branches=amount_branches_array[decimal];
+                   rating+=decimal;
+                    return amount_branches;
+            }
+
+            function get_second_allel_from_array(second_allel){
+                var decimal = parseInt(second_allel,2);
+                   var  size_tree=size_tree_array[decimal];
+                   rating+=decimal;
+                    return size_tree;
+            }
+
+            function get_third_allel_from_array(third_allel){
+                var decimal = parseInt(third_allel,2);
+                var leaves_sizes=leaves_sizes_array[decimal];
+                rating+=decimal;
+                return leaves_sizes;
+            }
+
+            function get_fourth_allel_from_array(fourth_allel){
+                var decimal = parseInt(fourth_allel,2);
+                var leaves_colors=colors_array[decimal];
+                rating+=decimal;
+                return leaves_colors;
+            }
+}
+
+
+
+
+        </script>
+
+    </body>
+
+</html>
